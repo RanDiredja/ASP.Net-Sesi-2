@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ApiExplorer;
 using Microsoft.EntityFrameworkCore;
 using MyUniversity.Data;
 using MyUniversity.Models;
@@ -23,7 +22,9 @@ namespace MyUniversity.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<GetStudentResult>>> Get()
         {
-            var listStudent = await _dbContext.Student
+            try
+            {
+                var listStudent = await _dbContext.Student
                 .Include(x => x.Major)
                 .Select(x => new GetStudentResult
                 {
@@ -34,14 +35,34 @@ namespace MyUniversity.Controllers
                 })
                 .ToListAsync();
 
-            return listStudent;
+                var response = new ApiResponse<IEnumerable<GetStudentResult>>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = listStudent
+                };
+
+                return Ok(response);
+            }
+            catch(Exception ex)
+            {
+                var errorResponse = new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = ex.Message
+                };
+                return BadRequest(errorResponse);
+            }
         }
 
         // GET api/<StudentController>/5
         [HttpGet("{id}")]
         public async Task<ActionResult<GetStudentResult>> Get(string id)
         {
-            var studentData = await _dbContext.Student.Where(x => x.StudentID == id)
+            try
+            {
+                var studentData = await _dbContext.Student.Where(x => x.StudentID == id)
                 .Select(x => new GetStudentResult
                 {
                     StudentID = x.StudentID,
@@ -51,89 +72,168 @@ namespace MyUniversity.Controllers
                 })
                 .FirstOrDefaultAsync();
 
-            if (studentData == null)
-            {
-                return BadRequest();
-            }
+                if (studentData == null)
+                {
+                    throw new ArgumentException("Student data not found.");
+                }
 
-            return studentData;
+                var response = new ApiResponse<GetStudentResult>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = studentData
+                };
+
+                return Ok(response);
+            }
+            catch(Exception ex)
+            {
+                var errorResponse = new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = ex.Message
+                };
+                return BadRequest(errorResponse);
+            }
         }
 
         // POST api/<StudentController>
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] CreateStudentRequest request)
         {
-            var isStudentExist = await _dbContext.Student.Where(x => x.StudentID == request.StudentID).AnyAsync();
-
-            if (isStudentExist)
+            try
             {
-                return BadRequest("Student already exist");
+                var isStudentExist = await _dbContext.Student.Where(x => x.StudentID == request.StudentID).AnyAsync();
+
+                if (isStudentExist)
+                {
+                    throw new ArgumentException("Student already exist");
+                }
+
+                var isMajorExist = await _dbContext.Major.Where(x => x.MajorID == request.MajorID).AnyAsync();
+                if (!isMajorExist)
+                {
+                    throw new KeyNotFoundException("Major not found");
+                }
+
+                var student = new Student
+                {
+                    StudentID = request.StudentID,
+                    FirstName = request.FirstName,
+                    LastName = request.LastName,
+                    Age = request.Age,
+                    MajorID = request.MajorID
+                };
+
+                _dbContext.Student.Add(student);
+                await _dbContext.SaveChangesAsync();
+
+                var response = new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status201Created,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = "Data Created"
+                };
+
+                return Ok(response);
             }
-
-            var isMajorExist = await _dbContext.Major.Where(x => x.MajorID == request.MajorID).AnyAsync();
-            if (!isMajorExist)
+            catch(Exception ex)
             {
-                return BadRequest("Major not found");
+                var errorResponse = new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = ex.Message
+                };
+                return BadRequest(errorResponse);
             }
-
-            var student = new Student
-            {
-                StudentID = request.StudentID,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Age = request.Age,
-                MajorID = request.MajorID
-            };
-
-            _dbContext.Student.Add(student);
-            await _dbContext.SaveChangesAsync();
-
-            return Ok();
+            
         }
 
         // PUT api/<StudentController>/5
         [HttpPut("{id}")]
         public async Task<IActionResult> Put(string id, [FromBody] UpdateStudentRequest request)
         {
-            var studentData = await _dbContext.Student.Where(x => x.StudentID == id).FirstOrDefaultAsync();
-
-            if (studentData == null)
+            try
             {
-                return BadRequest("Student data not found");
-            }
+                var studentData = await _dbContext.Student.Where(x => x.StudentID == id).FirstOrDefaultAsync();
 
-            var isMajorExist = await _dbContext.Major.Where(x => x.MajorID == request.MajorID).AnyAsync();
-            if (!isMajorExist)
+                if (studentData == null)
+                {
+                    throw new KeyNotFoundException("Student data not found");
+                }
+
+                var isMajorExist = await _dbContext.Major.Where(x => x.MajorID == request.MajorID).AnyAsync();
+                if (!isMajorExist)
+                {
+                    throw new KeyNotFoundException("Major not found");
+                }
+
+                studentData.FirstName = request.FirstName;
+                studentData.LastName = request.LastName;
+                studentData.Age = request.Age;
+                studentData.MajorID = request.MajorID;
+
+                _dbContext.Student.Update(studentData);
+                await _dbContext.SaveChangesAsync();
+
+                var response = new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = "Data Updated"
+                };
+
+                return Ok(response);
+            }
+            catch(Exception ex)
             {
-                return BadRequest("Major not found");
+                var errorResponse = new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = ex.Message
+                };
+                return BadRequest(errorResponse);
             }
-
-            studentData.FirstName = request.FirstName;
-            studentData.LastName = request.LastName;
-            studentData.Age = request.Age;
-            studentData.MajorID = request.MajorID;
-
-            _dbContext.Student.Update(studentData);
-            await _dbContext.SaveChangesAsync();
-
-            return Ok();
         }
 
         // DELETE api/<StudentController>/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(string id)
         {
-            var studentData = await _dbContext.Student.Where(x => x.StudentID == id).FirstOrDefaultAsync();
-
-            if (studentData == null)
+            try
             {
-                return BadRequest("Student data not found");
+                var studentData = await _dbContext.Student.Where(x => x.StudentID == id).FirstOrDefaultAsync();
+
+                if (studentData == null)
+                {
+                    throw new KeyNotFoundException("Student data not found");
+                }
+
+                _dbContext.Student.Remove(studentData);
+                await _dbContext.SaveChangesAsync();
+
+                var response = new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status200OK,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = "Data Deleted"
+                };
+
+                return Ok(response);
             }
-
-            _dbContext.Student.Remove(studentData);
-            await _dbContext.SaveChangesAsync();
-
-            return Ok();
+            catch(Exception ex)
+            {
+                var errorResponse = new ApiResponse<string>
+                {
+                    StatusCode = StatusCodes.Status400BadRequest,
+                    RequestMethod = HttpContext.Request.Method,
+                    Data = ex.Message
+                };
+                return BadRequest(errorResponse);
+            }
 
         }
     }
