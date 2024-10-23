@@ -1,16 +1,11 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System;
 
-namespace MyUniversity.Models.Request
+namespace MyUniversity.Models.Request;
+
+public class UpdateStudentRequest
 {
-    public class UpdateStudentRequest
-    {
-        [Required]
-        public string FirstName { get; set; }
-        [Required]
-        public string LastName { get; set; }
-        [Required]
-        public int Age { get; set; }
-        [Required]
-        public int MajorID { get; set; }
-    }
+    public string FirstName { get; set; }
+    public string LastName { get; set; }
+    public int Age { get; set; }
+    public int MajorID { get; set; }
 }
