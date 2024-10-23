@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileSystemGlobbing.Internal.PathSegments;
 using MyUniversity.Data;
@@ -57,6 +57,11 @@ namespace MyUniversity.Controllers
                 //     throw new ArgumentException("Student is already exists");
                 // }
 
+                var isMajorExists = await _context.Major.Where(x => x.MajorID == request.MajorId).AnyAsync();
+                if(!isMajorExists){
+                    throw new KeyNotFoundException("Major data not found");
+                }
+
                 var topStudentId = await _context.Student
                 .OrderByDescending(x => x.StudentID)
                 .Select(x => x.StudentID)
@@ -65,11 +70,6 @@ namespace MyUniversity.Controllers
                 var substringId = topStudentId?.Substring(2);
 
                 var currentId = int.Parse(substringId);
-
-                var isMajorExists = await _context.Major.Where(x => x.MajorID == request.MajorId).AnyAsync();
-                if(!isMajorExists){
-                    throw new KeyNotFoundException("Major data not found");
-                }
 
                 currentId += 1;
 
