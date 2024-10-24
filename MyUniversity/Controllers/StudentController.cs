@@ -35,7 +35,8 @@ namespace MyUniversity.Controllers
             .Select(x => new GetStudentResult{
                 StudentId = x.StudentID,
                 Name = $"{x.FirstName} {x.LastName}",
-                MajorName = x.Major.MajorName
+                MajorName = x.Major.MajorName,
+                Age = x.Age
             }).ToListAsync();
 
             var response = new ApiResponse<IEnumerable<GetStudentResult>>{
